@@ -188,4 +188,31 @@ function addDots() {
   multiplier++;
 }
 
+function getGameState() {
+  const dotsCopy = [];
+  dots.forEach(dot => {
+      dotsCopy.push(Object.assign({}, dot));
+  });
+  return {
+    multiplier: multiplier,
+    powerTicks: powerTicks,
+    animTicks: animTicks,
+    player: Object.assign({}, player),
+    enemy: Object.assign({}, enemy),
+    dots: dotsCopy
+  }
+}
+function loadGameState(gameState) {
+  multiplier = gameState.multiplier;
+  powerTicks = gameState.powerTicks;
+  animTicks = gameState.animTicks;
+  player = Object.assign({}, gameState.player);
+  enemy = Object.assign({}, gameState.enemy);
+  const dotsCopy = [];
+  gameState.dots.forEach(dot => {
+      dotsCopy.push(Object.assign({}, dot));
+  });
+  dots = dotsCopy;
+}
+
 addEventListener("load", onLoad);
