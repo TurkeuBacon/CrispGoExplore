@@ -10,19 +10,18 @@ class GoExplore {
     frames;
     nextGo;
     cells;
-    workingPath;
     oldEnd;
+    runStartTime;
 
     constructor() {
         this.screenReader = new ScreenReader();
         this.stop = false;
-        this.deltaTime = 10;
+        this.deltaTime = 0;
         this.nextFrameTime = 0;
     }
 
     run(exploreFrames) {
         this.cells = new Map();
-        this.workingPath = [];
         if(this.oldEnd == null || this.oldEnd == undefined) {
             this.oldEnd = end;
         }
@@ -48,6 +47,7 @@ class GoExplore {
             setTimeout(this.waitForRun.bind(this), 100);
         } else if(ticks == 1) {
             this.addCurrentCell();
+            this.runStartTime = performance.now();
             this.execute();
         }
         console.log(ticks);
@@ -60,13 +60,6 @@ class GoExplore {
         if(!this.stop) {
             setTimeout(this.execute.bind(this), 0);
         }
-        if(this.frames >= this.nextGo) {
-            if(!this.cells.has(this.screenReader.getLowResGrayImageString() + ":" + score)) {
-                this.addCurrentCell();
-            }
-            this.go();
-            this.nextGo = this.frames+this.exploreFrames;
-        }
         // const now = window.performance.now();
         // if (now < this.nextFrameTime) {
         //     return;
@@ -75,10 +68,12 @@ class GoExplore {
         // if (this.nextFrameTime < now || this.nextFrameTime > now + this.deltaTime * 2) {
         //     this.nextFrameTime = now + this.deltaTime;
         // }
-        this.explore();
-        document.dispatchEvent(new KeyboardEvent('advanceframe', null));
 
-        this.frames++;
+        for (let i = 0; i < 256; i++) {
+            this.explore();
+            update$3();
+            this.frames++;
+        }
     }
     go() {
         console.log("GO");
@@ -91,23 +86,26 @@ class GoExplore {
                 minVisits = value.numVisits;
                 goKey = key;
             }
-            if(value.score > highestScore) {
-                highestScore = value.score;
+            if(value.frameState.score > highestScore) {
+                highestScore = value.frameState.score;
             }
         }
         console.log("MIN VISITS: " + minVisits);
         console.log("HIGHEST SCORE: " + highestScore);
+        console.log("Exploration Rate: " + (this.frames / ((performance.now()-this.runStartTime))*1000).toFixed(2) + " FPS");
         const goCell = this.cells.get(goKey);
-        const pathCopy = [];
-        goCell.path.forEach(pressed => {
-            pathCopy.push(pressed);
-        });
-        this.workingPath = pathCopy;
         loadFrameState(goCell.frameState);
         goCell.visit();
     }
     explore() {
-        this.screenReader.updateScreen();
+        if(this.frames >= this.nextGo) {
+            this.screenReader.updateScreen();
+            if(!this.cells.has(this.screenReader.getLowResGrayImageString() + score)) {
+                this.addCurrentCell();
+            }
+            this.go();
+            this.nextGo = this.frames+this.exploreFrames;
+        }
         // console.log("EXPLORE");
         const doInput = this.frames >= this.nextInputFrame;
         if(doInput) {
@@ -115,18 +113,13 @@ class GoExplore {
             document.dispatchEvent(new KeyboardEvent('keyup', {'key': 'a'}));
             this.nextInputFrame = this.getNextInputFrame();
         }
-        this.workingPath.push(doInput);
     }
     getNextInputFrame() {
         return this.frames + Math.floor(Math.random() * 60)+40;
     }
     addCurrentCell() {
-        const cellHash = this.screenReader.getLowResGrayImageString() + ":" + score;
-        const pathCopy = [];
-        this.workingPath.forEach(pressed => {
-            pathCopy.push(pressed);
-        });
-        this.cells.set(cellHash, new Cell(getFrameState(), pathCopy, cellHash, score));
+        const cellHash = [this.screenReader.getLowResGrayImageString(), score].join('');
+        this.cells.set(cellHash, new Cell(getFrameState()));
     }
 }
 export default GoExplore;

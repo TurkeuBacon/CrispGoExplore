@@ -3550,5 +3550,6 @@ l l l
     exports.wrap = wrap;
     exports.yl = yl;
     exports.random = random;
+    exports.update$3 = update$3;
 
 })(window || {});

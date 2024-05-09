@@ -67,7 +67,7 @@ options = {
   theme: "dark",
   viewSize: { x: 100, y: 50 },
   isPlayingBgm: true,
-  isReplayEnabled: true,
+  isReplayEnabled: false,
   seed: 9,
 };
 
