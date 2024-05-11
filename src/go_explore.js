@@ -2,6 +2,7 @@ import Cell from "./cell.js";
 import ScreenReader from "./screen_reader.js";
 class GoExplore {
     screenReader;
+    highestScoreLabel;
     exploreFrames;
     stop;
     deltaTime;
@@ -18,6 +19,10 @@ class GoExplore {
         this.stop = false;
         this.deltaTime = 0;
         this.nextFrameTime = 0;
+        this.highestScoreLabel = document.createElement("label");
+        this.highestScoreLabel.innerHTML = "Highest Score: 0";
+        document.body.appendChild(document.createElement("hr"));
+        document.body.appendChild(this.highestScoreLabel);
     }
 
     run(exploreFrames) {
@@ -92,6 +97,7 @@ class GoExplore {
         }
         console.log("MIN VISITS: " + minVisits);
         console.log("HIGHEST SCORE: " + highestScore);
+        this.highestScoreLabel.innerHTML = "Highest Score: " + highestScore;
         console.log("Exploration Rate: " + (this.frames / ((performance.now()-this.runStartTime))*1000).toFixed(2) + " FPS");
         const goCell = this.cells.get(goKey);
         loadFrameState(goCell.frameState);
