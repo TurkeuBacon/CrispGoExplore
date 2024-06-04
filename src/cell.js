@@ -1,15 +1,13 @@
 class Cell {
     frameState;
-    path;
-    hash;
+    commandList;
+    sourceKey;
     numVisits;
-    score;
-    constructor(frameState, path, hash, score) {
+    constructor(frameState, commandList, sourceKey) {
         this.frameState = frameState;
-        this.path = path;
-        this.hash = hash;
+        this.commandList = commandList;
+        this.sourceKey = sourceKey;
         this.numVisits = 1;
-        this.score = score;
     }
     visit() {
         this.numVisits++;

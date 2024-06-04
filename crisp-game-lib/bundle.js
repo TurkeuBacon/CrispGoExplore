@@ -1756,7 +1756,11 @@ l l l
                 isJustReleased: false,
             },
         ]));
+        const IGNORED_KEYS = ["KeyR", "KeyE", "KeyS", "Digit1", "Digit2", "Digit3"];
         document.addEventListener("keydown", (e) => {
+            for(let i = 0; i < IGNORED_KEYS.length; i++)
+                if(e.code == IGNORED_KEYS[i])
+                    return;
             isKeyPressing = isKeyPressed = true;
             pressingCode[e.code] = pressedCode[e.code] = true;
             if (options$3.onKeyDown != null) {
@@ -2076,22 +2080,22 @@ l l l
         init$3(options$1.isSoundEnabled ? sss.startAudio : () => { });
         init$6();
         _init$1();
-        // update$3();
+        if(crispInControl) {
+            update$3();
+        }
     }
-
-    document.addEventListener("advanceframe", (e) => {
-        update$3();
-    });
     function update$3() {
-        // requestAnimationFrame(update$3);
-        // const now = window.performance.now();
-        // if (now < nextFrameTime - targetFps / 12) {
-        //     return;
-        // }
-        // nextFrameTime += deltaTime;
-        // if (nextFrameTime < now || nextFrameTime > now + deltaTime * 2) {
-        //     nextFrameTime = now + deltaTime;
-        // }
+        if(crispInControl) {
+            requestedFrameID = requestAnimationFrame(update$3);
+            const now = window.performance.now();
+            if (now < nextFrameTime - targetFps / 12) {
+                return;
+            }
+            nextFrameTime += deltaTime;
+            if (nextFrameTime < now || nextFrameTime > now + deltaTime * 2) {
+                nextFrameTime = now + deltaTime;
+            }
+        }
         if (options$1.isSoundEnabled) {
             sss.update();
         }
@@ -2958,6 +2962,7 @@ l l l
     let gameScriptFile;
     /** @ignore */
     function init(settings) {
+        console.log(settings);
         const win = window;
         win.update = settings.update;
         win.title = settings.title;
@@ -3549,6 +3554,35 @@ l l l
     exports.wh = wh;
     exports.wrap = wrap;
     exports.yl = yl;
-    exports.random = random;
+
+    //GABRIEL ADDITIONS
+    let requestedFrameID = null;
+    let crispInControl = true;
+
+    function crispReboot() {
+        score = 0;
+        hiScore = 0;
+        record = null;
+        onLoad();
+    }
+    function crispTakeControl() {
+        if(crispInControl) return;
+        crispInControl = true;
+        update$3();
+    }
+    function crispGiveControl() {
+        if(!crispInControl) return;
+        crispInControl = false;
+        if(requestedFrameID != null) {
+            cancelAnimationFrame(requestedFrameID)
+        }
+    }
+
+    exports.crispInControl = crispInControl;
+    exports.crispReboot = crispReboot;
+    exports.crispTakeControl = crispTakeControl;
+    exports.crispGiveControl = crispGiveControl;
+    exports.update$3 = update$3;
+    exports.initInGame = initInGame;
 
 })(window || {});
