@@ -1,10 +1,21 @@
 import Cell from "./cell.js";
 import ScreenReader from "./screen_reader.js";
+
+const patchedFunctions = [
+    'end',
+    'char',
+    'color',
+    'text',
+    'rect',
+    'addScore',
+];
+
 class GoExplore {
     screenReader;
     exploreRateLabel;
     highestScoreLabel;
     exploreFrames;
+    exploring;
     stop;
     deltaTime;
     nextFrameTime;
@@ -12,14 +23,24 @@ class GoExplore {
     frames;
     nextGo;
     cells;
-    oldEnd;
+    originalFunctions;
     runStartTime;
+    frameCommandList;
+    exploreCommandList;
+    originalReplayOption;
+    currentTimeoutId;
+    goSourceKey;
 
     constructor() {
+        this.currentTimeoutId = null;
         this.screenReader = new ScreenReader();
         this.stop = false;
-        this.deltaTime = 0;
-        this.nextFrameTime = 0;
+        this.exploring = false;
+        this.originalFunctions = new Map();
+        this.originalEnd = null;
+        this.originalChar = null;
+        this.originalColor = null;
+        this.goSourceKey = null;
         this.highestScoreLabel = document.createElement("label");
         this.highestScoreLabel.innerHTML = "Highest Score: 0";
         this.exploreRateLabel = document.createElement("label");
@@ -31,61 +52,74 @@ class GoExplore {
     }
 
     run(exploreFrames) {
-        this.cells = new Map();
-        if(this.oldEnd == null || this.oldEnd == undefined) {
-            this.oldEnd = end;
+        if(this.currentTimeoutId != null) {
+            clearTimeout(this.currentTimeoutId);
         }
-        end = ()=>{
-            console.log("END");
-            this.go();
-        };
-        this.frames = 0;
-        this.nextInputFrame = this.getNextInputFrame();
+        this.exploring = true;
+        this.stop = false;
         this.exploreFrames = exploreFrames;
+        this.deltaTime = 10;
+        this.nextFrameTime = 0;
+        this.goSourceKey = null;
+        this.cells = new Map();
+        this.exploreCommandList = [];
+        this.frameCommandList = [];
+        this.originalReplayOption = options.isReplayEnabled;
+        options.isReplayEnabled = false;
+        this.frames = 0; 
+        this.nextInputFrame = this.getNextInputFrame();
         this.nextGo = this.frames + this.exploreFrames;
-        this.waitForRun();
-        // setInterval(this.execute.bind(this), 0);
+
+        ce_setMode(ce_STEP_MODE);
+        crispReboot();
+        initInGame();
+        ticks = 0;
+        update$3();
+        const cellKey = this.addCurrentCell();
+        this.goSourceKey = cellKey;
+        patchedFunctions.forEach(patchedFunction => {
+            this.monkeyPatchFunction(true, patchedFunction);
+        });
+        this.runStartTime = performance.now();
+        this.execute();
     }
-    waitForRun() {
-        if(ticks < 0) {
-            document.dispatchEvent(new KeyboardEvent('keydown', {'key': 'a'}));
-            document.dispatchEvent(new KeyboardEvent('keyup', {'key': 'a'}));
-            document.dispatchEvent(new KeyboardEvent('advanceframe', null));
-            setTimeout(this.waitForRun.bind(this), 100);
-        } else if(ticks == 0) {
-            document.dispatchEvent(new KeyboardEvent('advanceframe', null));
-            setTimeout(this.waitForRun.bind(this), 100);
-        } else if(ticks == 1) {
-            this.addCurrentCell();
-            this.runStartTime = performance.now();
-            this.execute();
-        }
-        console.log(ticks);
-    }
-    stop() {
-        end = this.oldEnd;
-        this.oldEnd = null;
+    stopExplore() {
+        if(!this.exploring) return;
+        this.exploring = false;
+        patchedFunctions.forEach(patchedFunction => {
+            this.monkeyPatchFunction(false, patchedFunction);
+        });
+        options.isReplayEnabled = this.originalReplayOption;
+        this.stop = true;
+        ce_setMode(ce_NORMAL_MODE);
     }
     execute() {
         if(!this.stop) {
-            setTimeout(this.execute.bind(this), 0);
+            this.currentTimeoutId = setTimeout(this.execute.bind(this), 0);
+        } else {
+            this.stop = false;
         }
-        // const now = window.performance.now();
-        // if (now < this.nextFrameTime) {
-        //     return;
-        // }
-        // this.nextFrameTime += this.deltaTime;
-        // if (this.nextFrameTime < now || this.nextFrameTime > now + this.deltaTime * 2) {
-        //     this.nextFrameTime = now + this.deltaTime;
-        // }
 
         for (let i = 0; i < 256; i++) {
+            // const now = window.performance.now();
+            // if (now < this.nextFrameTime) {
+            //     continue;
+            // }
+            // this.nextFrameTime += this.deltaTime;
+            // if (this.nextFrameTime < now || this.nextFrameTime > now + this.deltaTime * 2) {
+            //     this.nextFrameTime = now + this.deltaTime;
+            // }
+            this.frameCommandList = [];
             this.explore();
             update$3();
+            
+            this.exploreCommandList.push(this.frameCommandList);
             this.frames++;
         }
     }
     go() {
+        this.frameCommandList = [];
+        this.exploreCommandList = [];
         console.log("GO");
         console.log("CELLS: " + this.cells.size);
         let goKey;
@@ -107,6 +141,7 @@ class GoExplore {
         this.exploreRateLabel.innerHTML = "Explore Rate: " + exploreRate + " fps";
         console.log("Exploration Rate: " + exploreRate + " FPS");
         const goCell = this.cells.get(goKey);
+        this.goSourceKey = goKey;
         loadFrameState(goCell.frameState);
         goCell.visit();
     }
@@ -132,7 +167,71 @@ class GoExplore {
     }
     addCurrentCell() {
         const cellHash = [this.screenReader.getLowResGrayImageString(), score].join('');
-        this.cells.set(cellHash, new Cell(getFrameState()));
+        this.cells.set(cellHash, new Cell(getFrameState(), this.exploreCommandList, this.goSourceKey));
+        return cellHash;
+    }
+    getHighestScoreCell() {
+        let highestScore = Number.MIN_VALUE;
+        let highestKey;
+        for (let [key, value] of this.cells) {
+            if(value.frameState.score > highestScore) {
+                highestScore = value.frameState.score;
+                highestKey = key;
+            }
+        }
+        return this.cells.get(highestKey);
+    }
+    monkeyPatchFunction(overriding, functionName) {
+        if(overriding) {
+            if(!this.originalFunctions.has(functionName)) {
+                this.originalFunctions.set(functionName, globalThis[functionName]);
+                globalThis[functionName] = this["ge_" + functionName].bind(this);
+            }
+        } else {
+            if(this.originalFunctions.has(functionName)) {
+                globalThis[functionName] = this.originalFunctions.get(functionName);
+                this.originalFunctions.delete(functionName);
+            }
+        }
+    }
+    ge_end() {
+        console.log("END");
+        this.go();
+    }
+    ge_char(str, x, y, options) {
+        const char = this.originalFunctions.get('char');
+        this.frameCommandList.push(()=>{
+            char(str, x, y, options);
+        });
+        return char(str, x, y, options);
+    }
+    ge_rect(x, y, width, height) {
+        const rect = this.originalFunctions.get('rect');
+        this.frameCommandList.push(()=>{
+            rect(x, y, width, height);
+        });
+        return rect(x, y, width, height);
+    }
+    ge_text(str, x, y, options) {
+        const text = this.originalFunctions.get('text');
+        this.frameCommandList.push(()=>{
+            text(str, x, y, options);
+        });
+        return text(str, x, y, options);
+    }
+    ge_color(colorName) {
+        const color = this.originalFunctions.get('color');
+        this.frameCommandList.push(()=>{
+            color(colorName);
+        });
+        return color(colorName);
+    }
+    ge_addScore(value, x, y) {
+        const addScore = this.originalFunctions.get('addScore');
+        this.frameCommandList.push(()=>{
+            addScore(value, x, y);
+        });
+        return addScore(value, x, y);
     }
 }
 export default GoExplore;

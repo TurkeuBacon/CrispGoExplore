@@ -40,7 +40,7 @@ class ScreenReader {
                         average += grayVal;
                     }
                 }
-                average = Math.floor(average/25/32);
+                average = average/25/32;
                 downScaledImage.push(average, average, average, 8);
             }
         }
@@ -49,11 +49,11 @@ class ScreenReader {
 
     getLowResGrayImageString() {
         const downScaledImage = this.getLowResGrayscale();
-        const stringChars = [];
-        for(let i = 0; i < downScaledImage.length; i++) {
-            stringChars.push(downScaledImage[i]);
+        let imageString = "" + downScaledImage[0];
+        for(let i = 1; i < downScaledImage.length; i++) {
+            imageString += "," + downScaledImage[i];
         }
-        return stringChars.join('');
+        return imageString;
     }
 }
 export default ScreenReader
