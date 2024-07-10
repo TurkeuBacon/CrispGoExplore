@@ -1,0 +1,5 @@
+Commented out the initial call to update in the init function
+Commented out the RequestAnimationFrame call in upate
+Added an "advanceFrame" eventListener to call update
+Commented out the time syncing code at the start of update
+exposed random
