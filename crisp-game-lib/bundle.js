@@ -1756,11 +1756,13 @@ l l l
                 isJustReleased: false,
             },
         ]));
-        const IGNORED_KEYS = ["KeyR", "KeyE", "KeyS", "Digit1", "Digit2", "Digit3"];
+        // const IGNORED_KEYS = ["KeyR", "KeyE", "KeyS", "Digit1", "Digit2", "Digit3"];
         document.addEventListener("keydown", (e) => {
-            for(let i = 0; i < IGNORED_KEYS.length; i++)
-                if(e.code == IGNORED_KEYS[i])
-                    return;
+            // for(let i = 0; i < IGNORED_KEYS.length; i++) {
+            //     if(e.code == IGNORED_KEYS[i]) {
+            //         return;
+            //     }
+            // }
             isKeyPressing = isKeyPressed = true;
             pressingCode[e.code] = pressedCode[e.code] = true;
             if (options$3.onKeyDown != null) {
@@ -3577,11 +3579,20 @@ l l l
             cancelAnimationFrame(requestedFrameID)
         }
     }
+    function simulateKeyPress() {
+        isKeyPressing = isKeyPressed = true;
+    }
+    function simulateKeyRelease() {
+        isKeyPressing = false;
+        isKeyReleased = true;
+    }
 
     exports.crispInControl = crispInControl;
     exports.crispReboot = crispReboot;
     exports.crispTakeControl = crispTakeControl;
     exports.crispGiveControl = crispGiveControl;
+    exports.simulateKeyPress = simulateKeyPress;
+    exports.simulateKeyRelease = simulateKeyRelease;
     exports.update$3 = update$3;
     exports.initInGame = initInGame;
 

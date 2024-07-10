@@ -22,7 +22,6 @@ function checkForCanvas()
         const stopExploreButton = document.createElement("button");
         stopExploreButton.innerHTML = "STOP_EXPLORE";
         stopExploreButton.onclick = () => {
-            console.log("--------------------------------");
             goExplore.stopExplore();
         };
         document.body.appendChild(stopExploreButton);
@@ -40,7 +39,6 @@ function checkForCanvas()
         const stopReplayButton = document.createElement("button");
         stopReplayButton.innerHTML = "STOP_REPLAY";
         stopReplayButton.onclick = () => {
-            console.log("STOP REPLAY");
             replayer.stopReplay();
         };
         document.body.appendChild(stopReplayButton);

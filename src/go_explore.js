@@ -1,4 +1,5 @@
 import Cell from "./cell.js";
+import GoExploreInputHandler from "./go_explore_input_handler.js";
 import ScreenReader from "./screen_reader.js";
 
 const patchedFunctions = [
@@ -19,7 +20,7 @@ class GoExplore {
     stop;
     deltaTime;
     nextFrameTime;
-    nextInputFrame;
+    inputHandler;
     frames;
     nextGo;
     cells;
@@ -55,6 +56,7 @@ class GoExplore {
         if(this.currentTimeoutId != null) {
             clearTimeout(this.currentTimeoutId);
         }
+        this.inputHandler = new GoExploreInputHandler({ min: 50, max: 110 }, { min: 1, max: 1 });
         this.exploring = true;
         this.stop = false;
         this.exploreFrames = exploreFrames;
@@ -67,7 +69,6 @@ class GoExplore {
         this.originalReplayOption = options.isReplayEnabled;
         options.isReplayEnabled = false;
         this.frames = 0; 
-        this.nextInputFrame = this.getNextInputFrame();
         this.nextGo = this.frames + this.exploreFrames;
 
         ce_setMode(ce_STEP_MODE);
@@ -120,8 +121,6 @@ class GoExplore {
     go() {
         this.frameCommandList = [];
         this.exploreCommandList = [];
-        console.log("GO");
-        console.log("CELLS: " + this.cells.size);
         let goKey;
         let minVisits = Number.MAX_VALUE;
         let highestScore = Number.MIN_VALUE;
@@ -134,15 +133,12 @@ class GoExplore {
                 highestScore = value.frameState.score;
             }
         }
-        console.log("MIN VISITS: " + minVisits);
-        console.log("HIGHEST SCORE: " + highestScore);
         const exploreRate = (this.frames / ((performance.now()-this.runStartTime))*1000).toFixed(2);
         this.highestScoreLabel.innerHTML = "Highest Score: " + highestScore;
         this.exploreRateLabel.innerHTML = "Explore Rate: " + exploreRate + " fps";
-        console.log("Exploration Rate: " + exploreRate + " FPS");
         const goCell = this.cells.get(goKey);
         this.goSourceKey = goKey;
-        loadFrameState(goCell.frameState);
+        loadFrameState(goCell.frameState, this.inputHandler);
         goCell.visit();
     }
     explore() {
@@ -154,20 +150,28 @@ class GoExplore {
             this.go();
             this.nextGo = this.frames+this.exploreFrames;
         }
-        // console.log("EXPLORE");
-        const doInput = this.frames >= this.nextInputFrame;
-        if(doInput) {
-            document.dispatchEvent(new KeyboardEvent('keydown', {'key': 'a'}));
-            document.dispatchEvent(new KeyboardEvent('keyup', {'key': 'a'}));
-            this.nextInputFrame = this.getNextInputFrame();
+        const inputAction = this.inputHandler.getFrameAction(this.frames);
+        switch(inputAction) {
+            case this.inputHandler.INPUT_ACTIONS.PRESS:
+                simulateKeyPress();
+                break;
+            case this.inputHandler.INPUT_ACTIONS.RELEASE:
+                simulateKeyRelease();
+                break;
+            case this.inputHandler.INPUT_ACTIONS.NO_OP:
+                break;
         }
-    }
-    getNextInputFrame() {
-        return this.frames + Math.floor(Math.random() * 60)+40;
+        // const doInput = this.frames >= this.nextInputFrame;
+        // if(doInput) {
+        //     simulateKeyPress();
+        //     this.nextInputFrame = this.getNextInputFrame();
+        // } else if(input.isPressed) {
+        //     simulateKeyRelease();
+        // }
     }
     addCurrentCell() {
         const cellHash = [this.screenReader.getLowResGrayImageString(), score].join('');
-        this.cells.set(cellHash, new Cell(getFrameState(), this.exploreCommandList, this.goSourceKey));
+        this.cells.set(cellHash, new Cell(getFrameState(this.inputHandler.getState()), this.exploreCommandList, this.goSourceKey));
         return cellHash;
     }
     getHighestScoreCell() {
@@ -195,7 +199,6 @@ class GoExplore {
         }
     }
     ge_end() {
-        console.log("END");
         this.go();
     }
     ge_char(str, x, y, options) {

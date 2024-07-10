@@ -5,31 +5,31 @@ let ce_currentMode;
 
 let originalUpdate = null;
 
-document.addEventListener("keydown", (e) => {
-    console.log(e.code);
-    switch(e.code) {
-        case "Digit1":
-            ce_setMode(ce_NORMAL_MODE);
-            break;
-        case "Digit2":
-            ce_setMode(ce_STEP_MODE);
-            break;
-        // case "Digit3":
-        //     ce_setMode(ce_REPLAY_MODE);
-        //     break;
-        case "KeyR":
-            crispReboot();
-            break;
-        case "KeyE":
-            if(ce_currentMode == ce_STEP_MODE) {
-                update$3();
-            }
-            break;
-        case "KeyS":
-            initInGame();
-            break;
-    }
-});
+// document.addEventListener("keydown", (e) => {
+//     console.log(e.code);
+//     switch(e.code) {
+//         case "Digit1":
+//             ce_setMode(ce_NORMAL_MODE);
+//             break;
+//         case "Digit2":
+//             ce_setMode(ce_STEP_MODE);
+//             break;
+//         // case "Digit3":
+//         //     ce_setMode(ce_REPLAY_MODE);
+//         //     break;
+//         case "KeyR":
+//             crispReboot();
+//             break;
+//         case "KeyE":
+//             if(ce_currentMode == ce_STEP_MODE) {
+//                 update$3();
+//             }
+//             break;
+//         case "KeyS":
+//             initInGame();
+//             break;
+//     }
+// });
 
 function ce_setMode(newMode, data) {
     ce_currentMode = newMode;
