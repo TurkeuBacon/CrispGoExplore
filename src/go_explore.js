@@ -56,7 +56,7 @@ class GoExplore {
         if(this.currentTimeoutId != null) {
             clearTimeout(this.currentTimeoutId);
         }
-        this.inputHandler = new GoExploreInputHandler({ min: 50, max: 110 }, { min: 1, max: 1 });
+        this.inputHandler = new GoExploreInputHandler(DELAY_RANGE, LENGTH_RANGE);
         this.exploring = true;
         this.stop = false;
         this.exploreFrames = exploreFrames;
@@ -161,13 +161,6 @@ class GoExplore {
             case this.inputHandler.INPUT_ACTIONS.NO_OP:
                 break;
         }
-        // const doInput = this.frames >= this.nextInputFrame;
-        // if(doInput) {
-        //     simulateKeyPress();
-        //     this.nextInputFrame = this.getNextInputFrame();
-        // } else if(input.isPressed) {
-        //     simulateKeyRelease();
-        // }
     }
     addCurrentCell() {
         const cellHash = [this.screenReader.getLowResGrayImageString(), score].join('');

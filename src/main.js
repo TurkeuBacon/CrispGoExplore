@@ -1,218 +1,286 @@
-title = "PAKU PAKU";
+title = "CHARGE BEAM";
 
 description = `
-[Tap] Turn
+[Tap]     Shot
+[Hold]    Charge
+[Release] Fire
 `;
 
 characters = [
   `
-  llll
- lll
-lll
-lll
- lll
-  llll
+rllbb
+lllccb
+llyl b
 `,
   `
-  lll
- lllll
-lll
-lll
- lllll
-  lll
+  r rr
+rrrrrr
+  grr
+  grr
+rrrrrr
+  r rr
 `,
   `
-  ll
- llll
-llllll
-llllll
- llll
-  ll
+ LLLL
+LyyyyL
+LyyyyL
+LyyyyL
+LyyyyL
+ LLLL
 `,
   `
-  lll
- l l l
- llll
- llll
-llll
-l l l
+   bbb
+  bccb
+bbllcb
+bcllcb
+  bccb
+   bbb
 `,
   `
-  lll
- l l l
- llll
- llll
- llll
- l l
-`,
-  `
-ll
-ll
-`,
-  `
- ll
-llll
-llll
- ll
-`,
-  `
-  l l
-
-
-
+l llll
+l llll
 `,
 ];
 
 options = {
+  viewSize: { x: 200, y: 60 },
   theme: "dark",
-  viewSize: { x: 100, y: 50 },
   isPlayingBgm: true,
   isReplayEnabled: true,
-  seed: 9,
+  seed: 3,
 };
 
-/** @type {{x: number, vx: number}} */
-let player;
-/** @type {{x: number, eyeVx: number}} */
-let enemy;
-/** @type {{x: number, isPower: boolean}[]} */
-let dots;
-let powerTicks;
-let animTicks;
-let multiplier;
+/** @type {{x: number, size: number, type: "enemy" | "coin"}[]} */
+let objs;
+let nextObjDist;
+let inhalingCoins;
+let coinMultiplier;
+let coinPenaltyMultiplier;
+let enemyMultiplier;
+let shotX;
+let shotSize;
+let charge;
+let penaltyVx;
+let prevType;
 
 function update() {
   if (!ticks) {
-    player = { x: 40, vx: 1 };
-    enemy = { x: 100, eyeVx: 0 };
-    multiplier = 0;
-    addDots();
-    powerTicks = animTicks = 0;
+    objs = [{ x: 150, size: 1, type: "enemy" }];
+    for (let i = 0; i < 3; i++) {
+      objs.push({ x: 160 + i * 10, size: 1, type: "coin" });
+    }
+    nextObjDist = 30;
+    inhalingCoins = [];
+    coinMultiplier = enemyMultiplier = coinPenaltyMultiplier = 1;
+    shotX = shotSize = undefined;
+    charge = 0;
+    penaltyVx = 0;
+    prevType = "coin";
   }
-  animTicks += difficulty;
-  color("black");
-  text(`x${multiplier}`, 3, 9);
-  if (input.isJustPressed) {
-    player.vx *= -1;
-  }
-  player.x += player.vx * 0.5 * difficulty;
-  if (player.x < -3) {
-    player.x = 103;
-  } else if (player.x > 103) {
-    player.x = -3;
-  }
-  color("blue");
-  rect(0, 23, 100, 1);
-  rect(0, 25, 100, 1);
-  rect(0, 34, 100, 1);
-  rect(0, 36, 100, 1);
-  color("green");
-  const ai = floor(animTicks / 7) % 4;
-  char(addWithCharCode("a", ai === 3 ? 1 : ai), player.x, 30, {
-    // @ts-ignore
-    mirror: { x: player.vx },
-  });
-  remove(dots, (d) => {
-    color(
-      d.isPower && floor(animTicks / 7) % 2 === 0 ? "transparent" : "yellow"
-    );
-    const c = char(d.isPower ? "g" : "f", d.x, 30).isColliding.char;
-    if (c.a || c.b || c.c) {
-      if (d.isPower) {
-        play("jump");
-        if (enemy.eyeVx === 0) {
-          powerTicks = 120;
-        }
+  if (shotX == null) {
+    text("BEAM", 30, 55);
+    if (input.isPressed && charge < 99) {
+      play("hit");
+      charge += difficulty * 1.5;
+      color("cyan");
+      let c = charge;
+      let x = 60;
+      if (c < 25) {
+        rect(x, 53, c, 5);
+        shotSize = 1;
       } else {
-        play("hit");
+        rect(x, 53, 25, 5);
+        c -= 25;
+        x += 27;
+        shotSize = 1;
+        while (c > 9) {
+          rect(x, 53, 9, 5);
+          x += 11;
+          c -= 9;
+          shotSize++;
+        }
+        rect(x, 53, c, 5);
+        shotSize++;
       }
-      addScore(multiplier);
-      return true;
+      color("black");
+    } else if (charge > 0) {
+      play("laser");
+      shotX = 10;
+      charge = 0;
+      coinMultiplier = enemyMultiplier = coinPenaltyMultiplier = 1;
     }
-  });
-  const evx =
-    enemy.eyeVx !== 0
-      ? enemy.eyeVx
-      : (player.x > enemy.x ? 1 : -1) * (powerTicks > 0 ? -1 : 1);
-  enemy.x = clamp(
-    enemy.x +
-      evx *
-        (powerTicks > 0 ? 0.25 : enemy.eyeVx !== 0 ? 0.75 : 0.55) *
-        difficulty,
-    0,
-    100
-  );
-  if ((enemy.eyeVx < 0 && enemy.x < 1) || (enemy.eyeVx > 0 && enemy.x > 99)) {
-    enemy.eyeVx = 0;
   }
-  color(
-    powerTicks > 0
-      ? powerTicks < 30 && powerTicks % 10 < 5
-        ? "black"
-        : "blue"
-      : enemy.eyeVx !== 0
-      ? "black"
-      : "red"
-  );
-  const c = char(
-    enemy.eyeVx !== 0 ? "h" : addWithCharCode("d", floor(animTicks / 7) % 2),
-    enemy.x,
-    30,
-    {
-      // @ts-ignore
-      mirror: { x: evx },
-    }
-  ).isColliding.char;
-  if (enemy.eyeVx === 0 && (c.a || c.b || c.c)) {
-    if (powerTicks > 0) {
-      play("powerUp");
-      addScore(10 * multiplier, enemy.x, 30);
-      enemy.eyeVx = player.x > 50 ? -1 : 1;
-      powerTicks = 0;
-      multiplier++;
+  if (shotX != null) {
+    shotX += difficulty * 2.5;
+    let x = shotX;
+    if (shotSize === 1) {
+      char("e", shotX, 30);
     } else {
-      play("explosion");
-      end();
+      for (let i = 0; i < shotSize; i++) {
+        if (shotSize % 2 === 1 && i === 0) {
+          char("d", x, 30);
+          x += 6;
+        } else {
+          if (i % 2 === shotSize % 2) {
+            char("d", x, 27);
+          } else {
+            char("d", x, 33);
+            x += 6;
+          }
+        }
+      }
+    }
+    if (shotX > 203) {
+      shotX = undefined;
     }
   }
-  powerTicks -= difficulty;
-  if (dots.length === 0) {
-    play("coin");
-    addDots();
+  penaltyVx -= 0.02;
+  if (penaltyVx < 0) {
+    penaltyVx = 0;
   }
-}
-
-function addDots() {
-  let pi = player.x > 50 ? rndi(1, 6) : rndi(10, 15);
-  dots = times(16, (i) => ({ x: i * 6 + 5, isPower: i === pi }));
-  multiplier++;
-}
-
-function getGameState() {
-  const dotsCopy = [];
-  dots.forEach(dot => {
-      dotsCopy.push(Object.assign({}, dot));
-  });
-  return {
-    multiplier: multiplier,
-    powerTicks: powerTicks,
-    animTicks: animTicks,
-    player: Object.assign({}, player),
-    enemy: Object.assign({}, enemy),
-    dots: dotsCopy
+  const vx = (-difficulty - penaltyVx) * 0.5;
+  color("red");
+  for (let i = 0; i < ceil(penaltyVx * 2 + 0.1); i++) {
+    text("<", i * 6 + 3, 48);
   }
-}
-function loadGameState(gameState) {
-  multiplier = gameState.multiplier;
-  powerTicks = gameState.powerTicks;
-  animTicks = gameState.animTicks;
-  player = Object.assign({}, gameState.player);
-  enemy = Object.assign({}, gameState.enemy);
-  const dotsCopy = [];
-  gameState.dots.forEach(dot => {
-      dotsCopy.push(Object.assign({}, dot));
+  color("black");
+  nextObjDist += vx;
+  if (nextObjDist < 0) {
+    const type = prevType !== "coin" && rnd() < 0.5 ? "coin" : "enemy";
+    prevType = type;
+    const c = rndi(3, 9);
+    let x = 200;
+    if (type === "coin") {
+      for (let i = 0; i < c; i++) {
+        objs.push({ x, size: 1, type: "coin" });
+        x += 10;
+      }
+    } else {
+      for (let i = 0; i < c; i++) {
+        const size = rnd() < 0.3 ? rndi(2, 6) : 1;
+        objs.push({
+          x,
+          size,
+          type: "enemy",
+        });
+        x += 10 + ceil((size - 1) / 2) * 6;
+      }
+    }
+    x += 10;
+    nextObjDist = x - 200;
+  }
+  let minCoinX = 999;
+  let minEnemyX = 999;
+  objs = objs.filter((o) => {
+    o.x += vx;
+    if (o.type === "coin") {
+      if (o.x < minCoinX) {
+        minCoinX = o.x;
+      }
+    } else {
+      if (o.x < minEnemyX) {
+        minEnemyX = o.x;
+      }
+    }
+    if (o.type === "coin") {
+      const c = char("c", o.x, 30).isColliding.char;
+      if (c.d || c.e) {
+        addCoinPenalty(o, c);
+        return false;
+      }
+      if (c.b || c.c) {
+        return false;
+      }
+    } else {
+      let x = o.x;
+      let c = {};
+      for (let i = 0; i < o.size; i++) {
+        if (o.size % 2 === 1 && i === 0) {
+          c = { ...c, ...char("b", x, 30).isColliding.char };
+          x += 6;
+        } else {
+          if (i % 2 === o.size % 2) {
+            c = { ...c, ...char("b", x, 27).isColliding.char };
+          } else {
+            c = { ...c, ...char("b", x, 33).isColliding.char };
+            x += 6;
+          }
+        }
+      }
+      if (c.d || c.e) {
+        play("explosion");
+        if (c.e) {
+          shotX = undefined;
+        }
+        if (o.size <= shotSize) {
+          particle(o.x, 30, o.size * 3);
+          addScore(enemyMultiplier * o.size, o.x, 30);
+          enemyMultiplier++;
+          if (o.size > 1) {
+            shotSize -= o.size;
+            if (shotSize <= 0) {
+              shotX = undefined;
+            }
+          }
+          return false;
+        } else {
+          o.size -= shotSize;
+          shotX = undefined;
+        }
+      }
+      if (c.b || c.c) {
+        return false;
+      }
+    }
+    return true;
   });
-  dots = dotsCopy;
+  if (minCoinX > 200 && minEnemyX > 200) {
+    nextObjDist = 0;
+  }
+  if (minCoinX < minEnemyX) {
+    objs = objs.filter((o) => {
+      if (o.type === "coin" && o.x < minEnemyX) {
+        inhalingCoins.push({ x: o.x, vx: -1 });
+        return false;
+      }
+      return true;
+    });
+  }
+  if (char("a", 10, 30).isColliding.char.b) {
+    play("lucky");
+    end();
+  }
+  inhalingCoins = inhalingCoins.filter((o) => {
+    o.x += o.vx;
+    o.vx -= 0.1;
+    const c = char("c", o.x, 30).isColliding.char;
+    if (c.d || c.e) {
+      addCoinPenalty(o, c);
+      return false;
+    }
+    if (o.x < 10) {
+      play("coin");
+      addScore(coinMultiplier, 10 + sqrt(coinMultiplier) * 4, 30);
+      if (coinMultiplier < 64) {
+        coinMultiplier *= 2;
+      }
+      return false;
+    }
+    return true;
+  });
+
+  function addCoinPenalty(o, c) {
+    play("powerUp");
+    particle(o.x, 30, 9, 5);
+    if (c.e) {
+      shotX = undefined;
+    }
+    addScore(-coinPenaltyMultiplier, o.x + sqrt(coinPenaltyMultiplier) * 4, 50);
+    if (coinPenaltyMultiplier < 64) {
+      coinPenaltyMultiplier *= 2;
+    }
+    penaltyVx += 0.5;
+  }
 }
 
 addEventListener("load", onLoad);
